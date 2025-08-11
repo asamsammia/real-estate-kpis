@@ -13,3 +13,6 @@ pytest
 - `src/kpi_metrics.py` – compute KPIs from tenant/lease tables
 - `notebooks/dashboard_story.ipynb` – outline and visuals
 - `powerbi/` and `tableau/` – templates/placeholders
+
+
+Note: Data files should be placed in the data/ directory (excluded from version control). Update requirements.txt with any additional dependencies you use.
