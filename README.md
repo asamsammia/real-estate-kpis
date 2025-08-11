@@ -8,6 +8,7 @@ python -m venv .venv && source .venv/bin/activate  # Windows: .venv\Scripts\acti
 pip install -r requirements.txt
 pytest
 ```
+
 ## Structure
 - `src/kpi_metrics.py` – compute KPIs from tenant/lease tables
 - `notebooks/dashboard_story.ipynb` – outline and visuals
