@@ -11,18 +11,6 @@ import pandas as pd
 def rent_roll_health(tenants: pd.DataFrame) -> pd.DataFrame:
     """
     Compute simple rent-roll health metrics by property.
-
-    Expected columns in `tenants`:
-    - property_id (str)
-    - unit_id (str)
-    - is_occupied (bool or 0/1)
-    - monthly_rent (numeric)
-
-    Returns a DataFrame with:
-    - property_id
-    - occupancy_rate
-    - avg_rent
-    - total_monthly_rent
     """
     df = tenants.copy()
     df["is_occupied"] = df["is_occupied"].astype(int)
@@ -56,7 +44,11 @@ def arrears_aging(ledger: pd.DataFrame) -> pd.DataFrame:
         .sum()
         .rename(columns={"balance": "amount"})
     )
-    out = pd.DataFrame({"bucket": labels}).merge(out, on="bucket", how="left").fillna({"amount": 0.0})
+    out = (
+        pd.DataFrame({"bucket": labels})
+        .merge(out, on="bucket", how="left")
+        .fillna({"amount": 0.0})
+    )
     return out
 
 
@@ -88,7 +80,11 @@ def lease_expiries(leases: pd.DataFrame, as_of: str) -> pd.DataFrame:
         .size()
         .rename(columns={"size": "expiring"})
     )
-    out = pd.DataFrame({"horizon": labels}).merge(out, on="horizon", how="left").fillna({"expiring": 0})
+    out = (
+        pd.DataFrame({"horizon": labels})
+        .merge(out, on="horizon", how="left")
+        .fillna({"expiring": 0})
+    )
     out["expiring"] = out["expiring"].astype(int)
     return out
 
@@ -96,18 +92,10 @@ def lease_expiries(leases: pd.DataFrame, as_of: str) -> pd.DataFrame:
 def noi_bridge(pnl_prev: pd.DataFrame, pnl_curr: pd.DataFrame) -> pd.DataFrame:
     """
     Compute a simple NOI bridge (current - previous by line item).
-
-    Expected columns for both frames:
-    - account (str): e.g., "Rent", "Other Income", "Taxes", "Repairs"
-    - amount (numeric): positive income, positive expenses
-
-    Returns a DataFrame sorted by absolute impact:
-    - account
-    - delta
-    - direction ("up" if improving NOI, "down" otherwise)
     """
     a = pnl_prev.copy().set_index("account")["amount"]
     b = pnl_curr.copy().set_index("account")["amount"]
+
     # Align accounts
     all_idx = a.index.union(b.index)
     a = a.reindex(all_idx).fillna(0.0)
@@ -120,5 +108,7 @@ def noi_bridge(pnl_prev: pd.DataFrame, pnl_curr: pd.DataFrame) -> pd.DataFrame:
         .sort_values("delta", key=lambda s: s.abs(), ascending=False)
         .reset_index(drop=True)
     )
-    out["direction"] = out["delta"].apply(lambda x: "up" if x >= 0 else "down")
+    out["direction"] = out["delta"].apply(
+        lambda x: "up" if x >= 0 else "down"
+    )
     return out
