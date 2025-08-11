@@ -15,4 +15,4 @@ pytest
 - `powerbi/` and `tableau/` – templates/placeholders
 
 
-Note: Data files should be placed in the data/ directory (excluded from version control). Update requirements.txt with any additional dependencies you use.
+## Note: Data files should be placed in the data/ directory (excluded from version control). Update requirements.txt with any additional dependencies you use.
