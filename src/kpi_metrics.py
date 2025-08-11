@@ -46,54 +46,51 @@ def rent_roll_health(tenants: pd.DataFrame) -> pd.DataFrame:
 def arrears_aging(ledger: pd.DataFrame) -> pd.DataFrame:
     """
     Build an arrears aging table (0-30, 31-60, 61-90, 90+).
-
-    Expected columns:
-    - tenant_id (str)
-    - days_past_due (int)
-    - balance (numeric)
     """
     df = ledger.copy()
     bins = [-1, 30, 60, 90, 10_000]
     labels = ["0-30", "31-60", "61-90", "90+"]
     df["bucket"] = pd.cut(df["days_past_due"], bins=bins, labels=labels)
     out = (
-        df.groupby("bucket", as_index=False)["balance"]
+        df.groupby("bucket", as_index=False, observed=True)["balance"]
         .sum()
         .rename(columns={"balance": "amount"})
     )
-    # ensure all buckets exist even if zero
-    out = (
-        pd.DataFrame({"bucket": labels})
-        .merge(out, on="bucket", how="left")
-        .fillna({"amount": 0.0})
-    )
+    out = pd.DataFrame({"bucket": labels}).merge(out, on="bucket", how="left").fillna({"amount": 0.0})
     return out
 
 
 def lease_expiries(leases: pd.DataFrame, as_of: str) -> pd.DataFrame:
     """
-    Count leases expiring in the next 30/60/90/180 days from `as_of`.
-
-    Expected columns:
-    - lease_id (str)
-    - end_date (datetime-like)
+    Count leases expiring in disjoint windows from `as_of`:
+    (0,30], (30,60], (60,90], (90,180] days.
     """
     df = leases.copy()
     df["end_date"] = pd.to_datetime(df["end_date"])
     ref = pd.to_datetime(as_of)
 
-    horizons = {
-        "30d": 30,
-        "60d": 60,
-        "90d": 90,
-        "180d": 180,
-    }
-    rows = []
-    for label, days in horizons.items():
-        cutoff = ref + pd.Timedelta(days=days)
-        mask = (df["end_date"] > ref) & (df["end_date"] <= cutoff)
-        rows.append({"horizon": label, "expiring": int(mask.sum())})
-    return pd.DataFrame(rows)
+    # days until expiry; keep only future expiries
+    df["days_until"] = (df["end_date"] - ref).dt.days
+    df = df[df["days_until"] > 0]
+
+    bins = [0, 30, 60, 90, 180]
+    labels = ["30d", "60d", "90d", "180d"]
+    df["horizon"] = pd.cut(
+        df["days_until"],
+        bins=bins,
+        labels=labels,
+        right=True,
+        include_lowest=True,
+    )
+
+    out = (
+        df.groupby("horizon", as_index=False, observed=True)
+        .size()
+        .rename(columns={"size": "expiring"})
+    )
+    out = pd.DataFrame({"horizon": labels}).merge(out, on="horizon", how="left").fillna({"expiring": 0})
+    out["expiring"] = out["expiring"].astype(int)
+    return out
 
 
 def noi_bridge(pnl_prev: pd.DataFrame, pnl_curr: pd.DataFrame) -> pd.DataFrame:
@@ -123,7 +120,5 @@ def noi_bridge(pnl_prev: pd.DataFrame, pnl_curr: pd.DataFrame) -> pd.DataFrame:
         .sort_values("delta", key=lambda s: s.abs(), ascending=False)
         .reset_index(drop=True)
     )
-    # Income up improves NOI; expense up worsens NOI. We don't have account
-    # types here, so treat positive delta as "up". Caller can map if needed.
     out["direction"] = out["delta"].apply(lambda x: "up" if x >= 0 else "down")
     return out
