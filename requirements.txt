@@ -1,4 +1,4 @@
-pandas>=2.0
-numpy>=1.24
-pytest>=7.0
-flake8>=6.0
+pandas>=1.5
+pytest>=7.4
+flake8>=6.1
+jupyter>=1.0
